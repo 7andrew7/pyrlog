@@ -1,21 +1,25 @@
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 
-class System(object):
+class NodeTimeout(Exception):
+    pass
+
+class Node(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def receive(timeout=10):
+    def receive(self, timeout=10):
         """Blocking message receive.
 
         :param timeout: The maximum number of seconds to block.
-        :return: A tuple of (node_id, message) or None on timeout.
+        :return: A tuple of (node_id, message).
+
+        Raises a Timeout exception on a timeout.
         """
 
     @abstractmethod
-    def send(node_id, message):
+    def send(self, dest_id, message):
         """Send a message to a given destination."""
 
-
     @abstractmethod
-    def time():
+    def time(self):
         """Returns seconds since the epoch."""
