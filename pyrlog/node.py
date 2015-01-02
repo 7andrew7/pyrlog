@@ -7,10 +7,11 @@ class Node(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def receive(self, timeout=10):
+    def receive(self, block=False, timeout=0):
         """Blocking message receive.
 
-        :param timeout: The maximum number of seconds to block.
+        :param block: Whether to block waiting for a response.
+        :param timeout: If non-blocking, the maximum timeout length.
         :return: A tuple of (node_id, message).
 
         Raises a Timeout exception on a timeout.
