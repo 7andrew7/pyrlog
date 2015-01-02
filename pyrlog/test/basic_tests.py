@@ -63,3 +63,10 @@ class InfrastructureTests(unittest.TestCase):
                 src, message = node.receive(block=False, timeout=100)
 
         self.__run(run, run)
+
+    def test_deadlock(self):
+        def run(node):
+            src, msg = node.receive(block=True)
+
+        with self.assertRaises(gevent.hub.LoopExit):
+            self.__run(run, run)
