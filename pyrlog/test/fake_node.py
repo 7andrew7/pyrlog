@@ -97,6 +97,11 @@ class FakeNode(Node):
         else:
             return result
 
+    def exit(self):
+        """Terminate a node."""
+        assert self._alarm >= 0
+        self._alarm = -1
+
     def send(self, dest_id, message):
         """Send a message to a given destination."""
         dest_node = self._network[dest_id]
