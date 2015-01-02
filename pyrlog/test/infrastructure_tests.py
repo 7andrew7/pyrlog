@@ -7,14 +7,16 @@ from pyrlog.message import *
 
 import gevent
 
-class PyrlogTests(unittest.TestCase):
+"""Tests of the simulation infrastructure."""
+
+class InfrastructureTests(unittest.TestCase):
     def setUp(self):
         self.clock = FakeClock()
         self.network = FakeNetwork()
 
-        self.nodes = [FakeNode(i, self.network, self.clock) for i in range(7)]
-        self.servers = self.nodes[:5]
-        self.clients = self.nodes[5:]
+        self.nodes = [FakeNode(i, self.network, self.clock) for i in range(2)]
+        self.server = self.nodes[0]
+        self.client = self.nodes[1]
 
     def test_client_server(self):
         def server_run(node):
@@ -23,7 +25,7 @@ class PyrlogTests(unittest.TestCase):
             src, msg = node.receive(block=True)
             print 'SERVER MSG'
             self.assertEqual(msg[0], MESSAGE_OP)
-            self.assertEqual(src, len(self.servers))
+            self.assertEqual(src, 1)
 
             node.send(src, (MESSAGE_OP_RESPONSE, msg[1] + 1))
 
@@ -43,6 +45,6 @@ class PyrlogTests(unittest.TestCase):
             print 'CLIENT BYE'
 
         gevent.joinall([
-            gevent.spawn(server_run, self.servers[0]),
-            gevent.spawn(client_run, self.clients[0])
+            gevent.spawn(server_run, self.server),
+            gevent.spawn(client_run, self.client)
             ], raise_error=True)
