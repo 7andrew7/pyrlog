@@ -15,3 +15,7 @@ class PersistentInteger(object):
     @abstractmethod
     def set(self, val):
         """Set the integer value."""
+
+    @abstractmethod
+    def increment(self):
+        """Increment the value by one; return new value."""

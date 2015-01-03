@@ -1,9 +1,22 @@
+from collections import namedtuple
 
-"""Definition of message types.
+"""Definition of message types."""
 
-All pyrlog messages are pickle-encoded tuples, whose first element is an
-integer from among this set.
-"""
 
-MESSAGE_OP = 1
-MESSAGE_OP_RESPONSE = 2
+class RequestVoteRequest(object):
+    def __init__(self, term, candidate_id, last_log_index, last_log_term):
+        self._term = term
+        self._candidate_id = candidate_id
+        self._last_log_index = last_log_index
+        self._last_log_term = last_log_term
+
+
+class RequestVoteResponse(object):
+    def __init__(self, term, vote_granted):
+        self._term = term
+        self._vote_granted = vote_granted
+
+class AppendEntriesRpc(object):
+    def __init__(self, term, leader_id):
+        self._term = term
+        self._leader_id = leader_id
