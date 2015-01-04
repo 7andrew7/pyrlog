@@ -43,6 +43,11 @@ class Server(object):
             log_len = len(self._log)
             self._estimated_log_length = [log_len] * self._num_servers
 
+            # Count of log entries that are definitively known to reside on
+            # each server -- used to update _commit_count.
+            self._known_log_length = [0] * self._num_servers
+            self._known_log_length[0] = len(self._log)
+
         # Number of log entires that have been committed and are therefore
         # safe to apply to the state machine.
         self._commit_count = -1
@@ -70,6 +75,11 @@ class Server(object):
             if i != self._node.node_id:
                 self._node.send(msg)
 
+    def __update_leader_commit_count(self):
+        known_commits = sorted(self._known_log_length)
+        self._commit_count = known_commits[self._num_servers / 2]
+        # TODO: Apply new commits to the state machine
+
     def __handle_message(self, src, msg):
         if isinstance(msg, AppendEntriesRequest):
             self.__reset_timeout()
@@ -86,6 +96,10 @@ class Server(object):
 
         elif isinstance(msg, AppendEntriesResponse):
             self._estimated_log_length[src] = msg._log_length
+            self._known_log_length[src] = msg._log_length
+
+            self.__update_leader_commit_count()
+
             # TODO: aggressively send out new append requests for nodes with
             # holes in their log?
 
@@ -99,6 +113,9 @@ class Server(object):
                 msg = AppendEntriesRequest(
                     prev_log_length, new_entries, self._commit_count)
                 self._node.send(i, msg)
+
+            # TODO: Consider reverting to follower if we didn't hear back
+            # from a majority of servers.
         else:
             pass # TODO: Handle leader failure here?
 
