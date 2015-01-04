@@ -4,27 +4,22 @@ class Log(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def append(self, term, val):
-        """Write a tuple to the log.
+    def append(self, entries, offset):
+        """Write entries to the log.
 
-        :param term: The current term number; must be at least as large as
-        last_term()
-        :param val: The value to log.
+        :param entries: A list of log entries.
+        :param offset: Offset within the log.  Must be <= len(log).
 
         Log writes have ACID semantics.
         """
 
     @abstractmethod
-    def last_term(self):
-        """Return the term number of the last log entry."""
-
-    @abstractmethod
-    def last_index(self):
-        """Return the index of the last log entry."""
-
-    @abstractmethod
     def __len__(self):
         """Return the length of the log."""
+
+    def last_index(self):
+        """Return the index of the last log entry."""
+        return len(self) - 1
 
     @abstractmethod
     def __iter__(self):

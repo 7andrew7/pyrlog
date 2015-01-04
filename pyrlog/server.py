@@ -16,23 +16,37 @@ class State(object):
 
 class Server(object):
 
-    @staticmethod
-    def choose_election_delay():
-        return random.randint(150, 300)
+    KEEPALIVE_DELAY = 30
+    ELECTION_DELAY = 150 # XXX not used
 
-    def accept_request_vote(self, msg):
-        """Returns True if the server should accept the RequestVote message.
+    def __reset_timeout(self):
+        if self._state == State.LEADER:
+            self._next_timeout_time = self._node.time() + KEEPALIVE_DELAY
+        else:
+            self._next_timeout_time = self._node.time() + ELECTION_DELAY
 
-        See Raft[5.4.1]
-        """
-        if msg._term < self._current_term.get():
-            return False
+    def __get_receive_timeout(self):
+        return self._next_timeout_time - self._node.time()
 
-        if msg._last_log_term > self._log.last_term():
-            return True
-        if msg._last_log_term < self._log.last_term():
-            return False
-        return msg._last_log_index >= self._log.last_index()
+    def __reset_volatile_state(self):
+        # XXX hard-coded leader
+        # TODO: Leader election
+
+        self._state = State.FOLLOWER
+        if self._node.node_id == 0:
+            self._state = State.LEADER
+
+            # The leader maintains an estimate of the log length
+            # at each follower; this is used to determine the number
+            # of entries to send an AppendEntriesRequest:
+            # entries = self._log[estimate_length:]
+            log_len = len(self._log)
+            self._estimated_log_length = [log_len] * self._num_servers
+
+        # Number of log entires that have been committed and are therefore
+        # safe to apply to the state machine.
+        self._commit_count = -1
+
 
     def __init__(self, node, num_servers, log, current_term, voted_for):
         """Initialize a Raft server instance.
@@ -41,23 +55,14 @@ class Server(object):
         :param num_servers: The number of servers in the Raft group; assumed
         to have node IDs equal to: range(num_servers).
         :param log: An instance of log.Log to record tuples.
-        :param current_term: An instance of PersistentInteger that records the
-        latest term seen by this server.
-        :param voted_for: An instance of PersistentInteger that records the
-        candidate that received the vote in the current term; -1 indicates None.
         """
         self._node = node
         self._num_servers = num_servers
 
-        # Persistent state
         self._log = log
-        self._current_term = current_term
-        self._voted_For = voted_for
 
         # Volatile state
-        self._state = State.FOLLOWER
-        self._leader_id = -1
-        self._vote_count = 0
+        self.__reset_volatile_state()
 
     def __broadcast(self, msg):
         """Send a message to other servers."""
@@ -65,49 +70,45 @@ class Server(object):
             if i != self._node.node_id:
                 self._node.send(msg)
 
-    def __handle_timeout(self):
-        if self._state == State.FOLLOWER:
-            term = self._current_term.increment()
-            self._state = State.CANDIDATE
-            self._vote_count = 1
-            self._leader_id = -1
-
-            msg = RequestVoteRequest(
-                _self._current_term.get(), self._node.node_id,
-                self._log.last_index(), self._log.last_term())
-            self.__broadcast(msg)
-
     def __handle_message(self, src, msg):
-        if isinstance(msg, RequestVoteRequest):
-            grant = self.accept_request_vote(msg)
-            response = RequestVoteResponse(_self._current_term.get(), grant)
+        if isinstance(msg, AppendEntriesRequest):
+            self.__reset_timeout()
+
+            self._commit_count = min(self._commit_count,
+                                     msg._leader_commit_count)
+            # TODO: Apply new commits to the state machine
+
+            if msg._prev_log_length <= len(self._log):
+                self._log.append(msg.entries, msg._prev_log_length)
+
+            response = AppendEntriesResponse(len(self._log))
             self._node.send(src, response)
-        elif isinstance(msg, RequestVoteResponse):
-            if msg._term > self._current_term.get():
-                self._current_term.set(msg._term)
 
-            if self._state == State.CANDIDATE:
-                self._vote_count += 1
-                if self._vote_count == (self._num_servers / 2 + 1):
-                    self._state = State.LEADER
-                    self._leader_id = self._node.node.id
+        elif isinstance(msg, AppendEntriesResponse):
+            self._estimated_log_length[src] = msg._log_length
+            # TODO: aggressively send out new append requests for nodes with
+            # holes in their log?
 
-                    heartbeat = AppendEntriesRequest(
-                        self._current_term.get(), self._leader_id)
-                    self.brodcast(heartbeat)
-
-        elif isinstance(msg, AppendEntriesRequest):
+    def __handle_timeout(self):
+        if self._state == State.LEADER:
+            for i in range(self._num_servers):
+                if i == self._node.node_id:
+                    continue
+                prev_log_length = self._estimated_log_length[i]
+                new_entries = self._log[prev_log_length:]
+                msg = AppendEntriesRequest(
+                    prev_log_length, new_entries, self._commit_count)
+                self._node.send(i, msg)
+        else:
+            pass # TODO: Handle leader failure here?
 
     def run(self):
         node = self._node
-        election_timeout = node.time() + choose_election_delay()
+
         while True:
             try:
-                remaining = node.time() - election_timeout
-                if remaning <= 0
-                    handle_timeout()
-                else:
-                    src, msg = node.receive(remaning)
-                    self.__handle_message(src, msg)
+                src, message = node.receive(self.__get_receive_timeout())
+                self.__handle_message(src, message)
             except NodeTimeout:
-                pass # TODO: initiate election
+                self.__handle_timeout()
+
