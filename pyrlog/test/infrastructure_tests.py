@@ -3,7 +3,6 @@ import unittest
 
 from pyrlog.test.fake_node import *
 from pyrlog.test import *
-from pyrlog.message import *
 
 import gevent
 
@@ -35,23 +34,20 @@ class InfrastructureTests(unittest.TestCase):
 
             src, msg = node.receive(block=True)
             print 'SERVER MSG'
-            self.assertEqual(msg[0], MESSAGE_OP)
             self.assertEqual(src, 1)
-
-            node.send(src, (MESSAGE_OP_RESPONSE, msg[1] + 1))
+            node.send(src, msg + 1)
 
             print 'SERVER BYE'
 
         def client_run(node):
             print 'CLIENT RUN'
 
-            node.send(0, (MESSAGE_OP, 17))
+            node.send(0, 17)
             src, msg = node.receive(timeout=1000)
             print 'CLIENT MSG'
 
             self.assertEqual(src, 0)
-            self.assertEqual(msg[0], MESSAGE_OP_RESPONSE)
-            self.assertEqual(msg[1], 18)
+            self.assertEqual(msg, 18)
 
             print 'CLIENT BYE'
 
