@@ -53,7 +53,7 @@ class Server(object):
         self._commit_count = -1
 
 
-    def __init__(self, node, num_servers, log, current_term, voted_for):
+    def __init__(self, node, num_servers, log):
         """Initialize a Raft server instance.
 
         :param node: The node that provides system services for this server.
@@ -79,6 +79,7 @@ class Server(object):
         known_commits = sorted(self._known_log_length)
         self._commit_count = known_commits[self._num_servers / 2]
         # TODO: Apply new commits to the state machine
+        # TODO: Store respond to client requests
 
     def __handle_message(self, src, msg):
         if isinstance(msg, AppendEntriesRequest):
@@ -102,6 +103,15 @@ class Server(object):
 
             # TODO: aggressively send out new append requests for nodes with
             # holes in their log?
+
+        elif isinstance(msg, OperationRequest):
+            if self._state != State.LEADER:
+                # TODO: redirect the client to the leader
+                return
+            self._log.append(msg.op)
+            self._known_log_length[self._node.node_id] += 1
+
+            # TODO: Store state to generate client response
 
     def __handle_timeout(self):
         if self._state == State.LEADER:

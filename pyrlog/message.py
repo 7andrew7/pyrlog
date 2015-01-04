@@ -24,3 +24,9 @@ class AppendEntriesRequest(object):
 class AppendEntriesResponse(object):
     def __init__(self, log_length):
         self._log_length = log_length
+
+
+class OperationRequest(object):
+    """A client-generated operation request."""
+    def __init__(self, op):
+        self._op = op
