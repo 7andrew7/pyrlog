@@ -39,17 +39,23 @@ class FakeNetwork(object):
     def __iter__(self):
         return iter(self._all_nodes)
 
+
+class EndOfTest(Exception):
+    pass
+
+
 class FakeNode(Node):
 
     TIMEOUT = "TIMEOUT"
 
-    def __init__(self, node_id, network, clock):
+    def __init__(self, node_id, network, clock, end_time=0):
         Node.__init__(self)
 
         self._node_id = node_id
         self._network = network
         self._clock = clock
         self._alarm = 0 # No pending alarm
+        self._end_time = end_time
         self._queue = Queue()
 
         network.add_node(self)
@@ -92,7 +98,9 @@ class FakeNode(Node):
         result = self._queue.get()
         print '%d QUEUE wakeup' % self._node_id
 
-        if result is FakeNode.TIMEOUT:
+        if self._end_time != 0 and time >= self._end_time:
+            raise EndOfTest()
+        elif result is FakeNode.TIMEOUT:
             raise NodeTimeout()
         else:
             return result

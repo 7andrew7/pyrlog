@@ -14,11 +14,14 @@ def run_instance(node, func):
     node.exit()
 
 class InfrastructureTests(unittest.TestCase):
+    DURATION  = 1000
+
     def setUp(self):
         self.clock = FakeClock()
         self.network = FakeNetwork()
 
-        self.nodes = [FakeNode(i, self.network, self.clock) for i in range(2)]
+        self.nodes = [FakeNode(i, self.network, self.clock, self.DURATION)
+                      for i in range(2)]
         self.server = self.nodes[0]
         self.client = self.nodes[1]
 
@@ -66,3 +69,11 @@ class InfrastructureTests(unittest.TestCase):
 
         with self.assertRaises(gevent.hub.LoopExit):
             self.__run(run, run)
+
+    def test_end_of_test(self):
+        def run(node):
+            with self.assertRaises(EndOfTest):
+                while True:
+                    src, msg = node.receive(block=False, timeout=self.DURATION * 10)
+
+        self.__run(run, run)
