@@ -112,6 +112,8 @@ class Server(object):
             self._known_log_length[self._node.node_id] += 1
 
             # TODO: Store state to generate client response
+            # TODO: aggressive generate append requests instead of waiting for
+            # heartbeat timeout?
 
     def __handle_timeout(self):
         if self._state == State.LEADER:
